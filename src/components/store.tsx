@@ -16,6 +16,7 @@ import type {
   AuditLog,
   AuthRole,
   Candidature,
+  DemandeAcces,
   DemandeHabilitation,
   EtapeCandidature,
   HabilitationStatut,
@@ -33,6 +34,7 @@ export interface DemoState {
   currentUserId?: string; // id de l'agent connecté
   unites: Unite[];
   agents: Agent[];
+  demandesAcces: DemandeAcces[];
   procedures: Procedure[];
   auditions: Audition[];
   habilitations: DemandeHabilitation[];
@@ -62,6 +64,9 @@ export type DemoAction =
   | { type: "HABILITATION_DECIDE"; id: string; statut: Exclude<HabilitationStatut, "EN_ATTENTE">; commentaire: string }
   | { type: "CANDIDATURE_CREATE"; candidature: Candidature }
   | { type: "CANDIDATURE_MOVE"; id: string; etape: EtapeCandidature }
+  | { type: "DEMANDE_ACCES_CREATE"; demande: DemandeAcces }
+  | { type: "DEMANDE_ACCES_DECIDE"; id: string; statut: "VALIDEE" | "REJETEE"; commentaire?: string; roleAttribue?: AuthRole; motDePasse?: string }
+  | { type: "SYNC_DEMANDES_ACCES"; demandes: DemandeAcces[] }
   | { type: "PRE_PLAINTE_CREATE"; prePlainte: PrePlainte }
   | { type: "PRE_PLAINTE_UPDATE_STATUT"; id: string; statut: StatutPrePlainte; dateRdv?: string }
   | { type: "PRE_PLAINTE_CONVERT_TO_PROCEDURE"; id: string; procedure: Procedure }
@@ -78,6 +83,7 @@ function initialState(): DemoState {
     role: "VISITEUR",
     unites: seed.UNITES,
     agents: seed.AGENTS,
+    demandesAcces: [],
     procedures: seed.PROCEDURES,
     auditions: [],
     habilitations: seed.HABILITATIONS,
@@ -313,6 +319,72 @@ function reducer(state: DemoState, action: DemoAction): DemoState {
       return withAudit({ ...state, habilitations }, `HABILITATION_${action.statut}`, ref);
     }
 
+    case "DEMANDE_ACCES_CREATE":
+      return withAudit(
+        { ...state, demandesAcces: [action.demande, ...(state.demandesAcces || [])] },
+        "DEMANDE_ACCES_DEPOSEE",
+        `Réf. ${action.demande.reference} (${action.demande.nom.toUpperCase()} ${action.demande.prenom} - Mle ${action.demande.matricule})`
+      );
+
+    case "DEMANDE_ACCES_DECIDE": {
+      const d = (state.demandesAcces || []).find((x) => x.id === action.id);
+      if (!d) return state;
+
+      const updatedDemandes = (state.demandesAcces || []).map((x) => {
+        if (x.id !== action.id) return x;
+        return {
+          ...x,
+          statut: action.statut,
+          reponseComment: action.commentaire || x.reponseComment,
+          motDePasseInitial: action.motDePasse || x.motDePasseInitial,
+          roleAttribue: action.roleAttribue || x.roleAttribue,
+          traiteParId: me.id,
+        };
+      });
+
+      if (action.statut === "VALIDEE") {
+        const pass = action.motDePasse || "Sentinelle2026!";
+        const chosenRole = action.roleAttribue || "AGENT";
+        const newAgent: Agent = {
+          id: uid(),
+          matricule: d.matricule,
+          institution: d.institution,
+          nom: d.nom,
+          prenom: d.prenom,
+          grade: d.grade,
+          uniteId: d.uniteId,
+          affectation: d.affectation,
+          statut: "ACTIF",
+          qualification: d.qualification,
+          role: chosenRole,
+          email: d.email,
+          identifiant: d.matricule,
+          motDePasse: pass,
+          dateIncorporation: nowLocal().slice(0, 10),
+        };
+
+        const existingIdx = state.agents.findIndex((a) => a.matricule === d.matricule);
+        const nextAgents = existingIdx >= 0
+          ? state.agents.map((a, i) => (i === existingIdx ? newAgent : a))
+          : [newAgent, ...state.agents];
+
+        return withAudit(
+          { ...state, demandesAcces: updatedDemandes, agents: nextAgents },
+          "ACCES_INTRANET_ACTIVE",
+          `Compte activé pour Mle ${d.matricule} (${d.prenom} ${d.nom.toUpperCase()}) — Rôle : ${chosenRole}`
+        );
+      }
+
+      return withAudit(
+        { ...state, demandesAcces: updatedDemandes },
+        "DEMANDE_ACCES_REFUSEE",
+        `Demande ${d.reference} refusée pour Mle ${d.matricule} — Motif : ${action.commentaire || "Non spécifié"}`
+      );
+    }
+
+    case "SYNC_DEMANDES_ACCES":
+      return { ...state, demandesAcces: action.demandes };
+
     case "CANDIDATURE_CREATE":
       return withAudit({ ...state, candidatures: [action.candidature, ...state.candidatures] }, "CANDIDATURE_DEPOSEE", action.candidature.reference);
 
@@ -471,6 +543,16 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
         }
       })
       .catch((e) => console.error("Erreur sync procédures:", e));
+
+    // 6. Synchronisation en direct avec la base PostgreSQL Supabase pour les demandes d'accès
+    fetch("/api/demandes-acces")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.data)) {
+          dispatch({ type: "SYNC_DEMANDES_ACCES", demandes: data.data });
+        }
+      })
+      .catch((e) => console.error("Erreur sync demandes d'accès:", e));
   }, []);
 
   useEffect(() => {

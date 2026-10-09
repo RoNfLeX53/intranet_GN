@@ -3,10 +3,21 @@ import type { Agent, AuthRole, Candidature, DemandeHabilitation, Offre, Procedur
 import { chainAudit } from "./utils";
 
 export const UNITES: Unite[] = [
-  { id: "u1", code: "4512", nom: "BTA de Valmont-sur-Loire", type: "BRIGADE" },
-  { id: "u2", code: "4530", nom: "Brigade de recherches de Valmont", type: "BR" },
-  { id: "u3", code: "4540", nom: "PSIG de Valmont", type: "PSIG" },
-  { id: "u4", code: "4500", nom: "État-major du groupement", type: "GROUPEMENT" },
+  // Gendarmerie nationale
+  { id: "u1", code: "4512", nom: "BTA de Valmont-sur-Loire", type: "BRIGADE", institution: "GENDARMERIE" },
+  { id: "u2", code: "4530", nom: "Brigade de recherches de Valmont", type: "BR", institution: "GENDARMERIE" },
+  { id: "u3", code: "4540", nom: "PSIG de Valmont", type: "PSIG", institution: "GENDARMERIE" },
+  { id: "u4", code: "4500", nom: "État-major du groupement", type: "GROUPEMENT", institution: "GENDARMERIE" },
+  // Police nationale
+  { id: "u5", code: "PN-7501", nom: "Commissariat central de Police (CSP Valmont)", type: "COMMISSARIAT", institution: "POLICE_NATIONALE" },
+  { id: "u6", code: "PN-7512", nom: "Brigade Anti-Criminalité (BAC Valmont)", type: "BAC", institution: "POLICE_NATIONALE" },
+  { id: "u7", code: "PN-7520", nom: "Division de Police Judiciaire (DTPJ / SLPJ)", type: "PJ", institution: "POLICE_NATIONALE" },
+  { id: "u8", code: "PN-7500", nom: "Direction Interdépartementale de la Police Nationale (DIPN)", type: "DIPN", institution: "POLICE_NATIONALE" },
+  // Justice & Juridictions
+  { id: "u9", code: "TJ-4501", nom: "Tribunal Judiciaire de Valmont (TJ)", type: "TRIBUNAL_JUDICIAIRE", institution: "JUSTICE" },
+  { id: "u10", code: "TJ-4502", nom: "Parquet de la République de Valmont", type: "PARQUET", institution: "JUSTICE" },
+  { id: "u11", code: "TJ-4503", nom: "Cabinet du Juge d'instruction", type: "CABINET_INSTRUCTION", institution: "JUSTICE" },
+  { id: "u12", code: "BAR-4500", nom: "Ordre des Avocats / Barreau de Valmont", type: "BARREAU_AVOCATS", institution: "JUSTICE" },
 ];
 
 /**
@@ -36,6 +47,8 @@ export const DEMO_ACCOUNTS: Record<AuthRole, string> = {
   AGENT: "admin-1",
   OFFICIER: "admin-1",
   ADMIN: "admin-1",
+  MAGISTRAT: "admin-1",
+  AVOCAT: "admin-1",
 };
 
 /** Procédures judiciaires : base vierge prête pour les enregistrements réels */

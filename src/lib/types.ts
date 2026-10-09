@@ -1,10 +1,13 @@
 // Types métier partagés par la maquette (miroir simplifié du schéma Prisma).
 
-export type Role = "VISITEUR" | "AGENT" | "OFFICIER" | "ADMIN";
+export type Role = "VISITEUR" | "AGENT" | "OFFICIER" | "ADMIN" | "MAGISTRAT" | "AVOCAT";
 export type AuthRole = Exclude<Role, "VISITEUR">;
-export type Tone = "neutral" | "info" | "success" | "warning" | "error" | "navy";
+export type Tone = "neutral" | "info" | "success" | "warning" | "error" | "navy" | "purple";
+
+export type Institution = "GENDARMERIE" | "POLICE_NATIONALE" | "JUSTICE";
 
 export type Grade =
+  // Gendarmerie nationale
   | "GAV"
   | "GENDARME"
   | "MDL_CHEF"
@@ -15,22 +18,67 @@ export type Grade =
   | "CAPITAINE"
   | "COMMANDANT"
   | "LIEUTENANT_COLONEL"
-  | "COLONEL";
+  | "COLONEL"
+  // Police nationale - CEA
+  | "POLICIER_ADJOINT"
+  | "GARDIEN_DE_LA_PAIX"
+  | "BRIGADIER_CHEF_POLICE"
+  | "MAJOR_POLICE"
+  | "MAJOR_RULP"
+  // Police nationale - CC
+  | "CAPITAINE_POLICE"
+  | "COMMANDANT_POLICE"
+  | "COMMANDANT_DIVISIONNAIRE"
+  | "COMMANDANT_DIV_EF"
+  // Police nationale - CCD
+  | "COMMISSAIRE_POLICE"
+  | "COMMISSAIRE_DIVISIONNAIRE"
+  | "COMMISSAIRE_GENERAL"
+  | "CONTROLEUR_GENERAL"
+  | "INSPECTEUR_GENERAL"
+  | "DGPN"
+  // Justice & Juridictions (Tribunal, Parquet, Barreau)
+  | "PROCUREUR"
+  | "PROCUREUR_ADJOINT"
+  | "SUBSTITUT_PROCUREUR"
+  | "JUGE_INSTRUCTION"
+  | "JUGE_LIBERTES"
+  | "JUGE_ENFANTS"
+  | "JUGE_SIEGE"
+  | "PRESIDENT_TRIBUNAL"
+  | "AVOCAT_BARREAU"
+  | "BATONNIER"
+  | "GREFFIER_TRIBUNAL";
 
 export type StatutActivite = "ACTIF" | "EN_CONGE" | "DETACHE" | "SUSPENDU" | "RADIE";
-export type QualifJudiciaire = "AUCUNE" | "APJ21" | "APJ20" | "OPJ";
-export type TypeUnite = "BRIGADE" | "BR" | "PSIG" | "GROUPEMENT";
+export type QualifJudiciaire = "AUCUNE" | "APJ21" | "APJ20" | "OPJ" | "MAGISTRAT" | "AVOCAT";
+export type TypeUnite =
+  | "BRIGADE"
+  | "BR"
+  | "PSIG"
+  | "GROUPEMENT"
+  | "COMMISSARIAT"
+  | "BAC"
+  | "PJ"
+  | "CRS"
+  | "DIPN"
+  | "TRIBUNAL_JUDICIAIRE"
+  | "PARQUET"
+  | "CABINET_INSTRUCTION"
+  | "BARREAU_AVOCATS";
 
 export interface Unite {
   id: string;
   code: string;
   nom: string;
   type: TypeUnite;
+  institution?: Institution;
 }
 
 export interface Agent {
   id: string;
   matricule: string;
+  institution?: Institution;
   nom: string;
   prenom: string;
   grade: Grade;
@@ -44,6 +92,29 @@ export interface Agent {
   motDePasse?: string;  // Mot de passe transmis à l'agent
   dateIncorporation: string;
   revocation?: { date: string; motif: string; par: string };
+}
+
+export type StatutDemandeAcces = "EN_ATTENTE" | "VALIDEE" | "REJETEE";
+
+export interface DemandeAcces {
+  id: string;
+  reference: string;
+  institution: Institution;
+  matricule: string;
+  nom: string;
+  prenom: string;
+  grade: Grade;
+  uniteId: string;
+  affectation: string;
+  qualification: QualifJudiciaire;
+  email: string;
+  motif: string;
+  statut: StatutDemandeAcces;
+  reponseComment?: string;
+  traiteParId?: string;
+  motDePasseInitial?: string;
+  roleAttribue?: AuthRole;
+  createdAt: string;
 }
 
 export interface HistoriqueEntry {

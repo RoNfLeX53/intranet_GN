@@ -13,6 +13,7 @@ const TONES: Record<Tone, string> = {
   warning: "bg-warning-light text-warning",
   error: "bg-marianne-light text-marianne-dark",
   navy: "bg-gend-100 text-gend-900",
+  purple: "bg-purple-100 text-purple-900",
 };
 
 export function Badge({ tone = "neutral", children, className }: { tone?: Tone; children: ReactNode; className?: string }) {
@@ -137,6 +138,7 @@ export function Alert({ tone = "info", title, children }: { tone?: Tone; title?:
     warning: "border-warning",
     error: "border-marianne",
     navy: "border-gend-900",
+    purple: "border-purple-600",
   };
   return (
     <div className={cx("border-l-4 bg-white px-4 py-3 text-sm shadow-sm", border[tone])} role={tone === "error" ? "alert" : "status"}>

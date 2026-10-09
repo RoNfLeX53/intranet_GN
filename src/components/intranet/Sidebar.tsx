@@ -32,6 +32,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
   {
     section: "Ressources humaines",
     items: [
+      { href: "/intranet/demandes-acces", label: "Demandes d'accès", icon: KeyRound, perms: ["agents:manage"] },
       { href: "/intranet/agents", label: "Effectifs & annuaire", icon: Users, perms: ["agents:read"] },
       { href: "/intranet/recrutement", label: "Pôle recrutement", icon: UserPlus, perms: ["recrutement:manage"] },
     ],
@@ -48,6 +49,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   const pathname = usePathname();
   if (!me) return null;
 
+  const pendingDemandesAcces = (state.demandesAcces || []).filter((d) => d.statut === "EN_ATTENTE").length;
   const pendingReview = state.habilitations.filter((h) => h.statut === "EN_ATTENTE").length;
   const pendingPrePlaintes = (state.prePlaintes ?? []).filter(
     (p) => p.statut === "DEPOSEE" && (me.role === "ADMIN" || p.uniteId === me.unite.id)
@@ -104,6 +106,11 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                         >
                           <Icon size={18} aria-hidden />
                           <span className="flex-1">{item.label}</span>
+                          {item.href === "/intranet/demandes-acces" && pendingDemandesAcces > 0 && (
+                            <span className="rounded-full bg-marianne px-2 text-xs font-bold" aria-label={`${pendingDemandesAcces} demandes d'accès en attente`}>
+                              {pendingDemandesAcces}
+                            </span>
+                          )}
                           {item.href === "/intranet/habilitations" && can(me.role, "habilitations:review") && pendingReview > 0 && (
                             <span className="rounded-full bg-marianne px-2 text-xs font-bold" aria-label={`${pendingReview} demandes en attente`}>
                               {pendingReview}

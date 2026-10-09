@@ -16,6 +16,7 @@ export async function GET() {
     const formatted = agents.map((a) => ({
       id: a.id,
       matricule: a.matricule,
+      institution: (a.institution as "GENDARMERIE" | "POLICE_NATIONALE") || "GENDARMERIE",
       nom: a.nom,
       prenom: a.prenom,
       grade: a.grade,
@@ -25,7 +26,8 @@ export async function GET() {
       qualification: a.qualification,
       role: a.user?.role || "AGENT",
       email: a.user?.email || "",
-      identifiant: a.user?.email.split("@")[0] || a.matricule,
+      identifiant: a.identifiant || a.user?.email.split("@")[0] || a.matricule,
+      motDePasse: a.motDePasse || undefined,
       dateIncorporation: a.dateIncorporation.toISOString().slice(0, 10),
     }));
 
@@ -39,26 +41,47 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { matricule, nom, prenom, grade, uniteId, affectation, statut, qualification, role, email } = body;
+    const {
+      matricule,
+      institution,
+      nom,
+      prenom,
+      grade,
+      uniteId,
+      affectation,
+      statut,
+      qualification,
+      role,
+      email,
+      identifiant,
+      motDePasse,
+    } = body;
 
     if (!matricule || !nom || !prenom || !uniteId) {
       return NextResponse.json({ success: false, error: "Champs requis manquants" }, { status: 400 });
     }
 
-    const userEmail = email || `${matricule}@gendarmerie.interieur.gouv.fr`;
+    const defaultDomain = institution === "POLICE_NATIONALE" ? "police.interieur.gouv.fr" : "gendarmerie.interieur.gouv.fr";
+    const userEmail = email || `${matricule}@${defaultDomain}`;
+    const pass = motDePasse || (institution === "POLICE_NATIONALE" ? "Police2026!" : "Gend2026!");
 
     const user = await prisma.user.upsert({
       where: { email: userEmail },
-      update: { role: role || "AGENT" },
+      update: {
+        role: role || "AGENT",
+        passwordHash: pass,
+      },
       create: {
         email: userEmail,
         role: role || "AGENT",
+        passwordHash: pass,
       },
     });
 
     const agent = await prisma.agent.upsert({
       where: { matricule },
       update: {
+        institution: institution || "GENDARMERIE",
         nom,
         prenom,
         grade: grade || "GENDARME",
@@ -66,15 +89,20 @@ export async function POST(request: Request) {
         statut: statut || "ACTIF",
         qualification: qualification || "AUCUNE",
         uniteId,
+        identifiant: identifiant || matricule,
+        motDePasse: pass,
       },
       create: {
         matricule,
+        institution: institution || "GENDARMERIE",
         nom,
         prenom,
         grade: grade || "GENDARME",
         affectation: affectation || "Service général",
         statut: statut || "ACTIF",
         qualification: qualification || "AUCUNE",
+        identifiant: identifiant || matricule,
+        motDePasse: pass,
         dateIncorporation: new Date(),
         userId: user.id,
         uniteId,

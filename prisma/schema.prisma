@@ -17,6 +17,8 @@ enum Role {
   AGENT
   OFFICIER
   ADMIN
+  MAGISTRAT
+  AVOCAT
 }
 
 enum Grade {
@@ -31,6 +33,36 @@ enum Grade {
   COMMANDANT
   LIEUTENANT_COLONEL
   COLONEL
+  // Police Nationale - Corps d'application et d'encadrement
+  POLICIER_ADJOINT
+  GARDIEN_DE_LA_PAIX
+  BRIGADIER_CHEF_POLICE
+  MAJOR_POLICE
+  MAJOR_RULP
+  // Police Nationale - Corps de commandement
+  CAPITAINE_POLICE
+  COMMANDANT_POLICE
+  COMMANDANT_DIVISIONNAIRE
+  COMMANDANT_DIV_EF
+  // Police Nationale - Corps de conception et de direction
+  COMMISSAIRE_POLICE
+  COMMISSAIRE_DIVISIONNAIRE
+  COMMISSAIRE_GENERAL
+  CONTROLEUR_GENERAL
+  INSPECTEUR_GENERAL
+  DGPN
+  // Justice & Tribunal - Magistrats & Auxiliaires de justice
+  PROCUREUR
+  PROCUREUR_ADJOINT
+  SUBSTITUT_PROCUREUR
+  JUGE_INSTRUCTION
+  JUGE_LIBERTES
+  JUGE_ENFANTS
+  JUGE_SIEGE
+  PRESIDENT_TRIBUNAL
+  AVOCAT_BARREAU
+  BATONNIER
+  GREFFIER_TRIBUNAL
 }
 
 enum StatutActivite {
@@ -46,6 +78,8 @@ enum QualifJudiciaire {
   APJ21
   APJ20
   OPJ
+  MAGISTRAT
+  AVOCAT
 }
 
 enum TypeUnite {
@@ -53,6 +87,21 @@ enum TypeUnite {
   BR
   PSIG
   GROUPEMENT
+  COMMISSARIAT
+  BAC
+  PJ
+  CRS
+  DIPN
+  TRIBUNAL_JUDICIAIRE
+  PARQUET
+  CABINET_INSTRUCTION
+  BARREAU_AVOCATS
+}
+
+enum StatutDemandeAcces {
+  EN_ATTENTE
+  VALIDEE
+  REJETEE
 }
 
 enum HabilitationType {
@@ -134,13 +183,16 @@ model Unite {
 
 model Agent {
   id                 String           @id @default(uuid())
-  matricule          String           @unique // 6 chiffres (ex: 245781)
+  matricule          String           @unique // 6 chiffres (ex: 245781) ou RIO Police (7 chiffres)
+  institution        String           @default("GENDARMERIE") // GENDARMERIE ou POLICE_NATIONALE
   nom                String
   prenom             String
   grade              Grade
   affectation        String
   statut             StatutActivite   @default(ACTIF)
   qualification      QualifJudiciaire @default(AUCUNE)
+  identifiant        String?
+  motDePasse         String?
   dateIncorporation  DateTime
   dateRevocation     DateTime?
   motifRevocation    String?
@@ -423,3 +475,31 @@ model PrePlainte {
   @@index([numeroDossier])
   @@map("pre_plaintes")
 }
+
+model DemandeAcces {
+  id                String             @id @default(uuid())
+  reference         String             @unique // Ex: ACC-2026-0001
+  institution       String             @default("GENDARMERIE") // GENDARMERIE ou POLICE_NATIONALE
+  matricule         String
+  nom               String
+  prenom            String
+  grade             Grade
+  uniteId           String
+  affectation       String
+  qualification     QualifJudiciaire   @default(APJ20)
+  email             String
+  motif             String             @db.Text
+  statut            StatutDemandeAcces @default(EN_ATTENTE)
+  reponseComment    String?            @db.Text
+  traiteParId       String?
+  motDePasseInitial String?
+  roleAttribue      Role?              @default(AGENT)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([statut])
+  @@index([matricule])
+  @@index([institution])
+  @@map("demandes_acces")
+}
+

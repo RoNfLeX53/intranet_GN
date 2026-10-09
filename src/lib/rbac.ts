@@ -56,6 +56,23 @@ export const RBAC_MATRIX: Record<Role, Partial<Record<Permission, Scope>>> = {
     "habilitations:review": "unit",
     "agents:read": "unit",
   },
+  // Magistrat (Procureur de la République, Juges du tribunal) : direction des enquêtes, instructions et orientation
+  MAGISTRAT: {
+    ...PUBLIC,
+    "dashboard:view": "all",
+    "procedures:read": "all",
+    "procedures:validate": "all",
+    "procedures:rapport": "all",
+    "agents:read": "all",
+    "audit:read": "all",
+  },
+  // Avocat au Barreau : consultation des dossiers judiciaires et observations
+  AVOCAT: {
+    ...PUBLIC,
+    "dashboard:view": "own",
+    "procedures:read": "all",
+    "procedures:rapport": "own",
+  },
   // Séparation des tâches : l'administrateur RH/DSI gère les effectifs et les droits
   // mais n'a PAS accès au contenu des procédures judiciaires (secret de l'enquête).
   ADMIN: {
