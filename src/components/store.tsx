@@ -75,8 +75,8 @@ export type DemoAction =
   | { type: "HYDRATE"; state: DemoState }
   | { type: "RESET" };
 
-const STORAGE_KEY = "sentinelle-db-v5";
-const STORAGE_VERSION = 5;
+const STORAGE_KEY = "sentinelle-db-v6";
+const STORAGE_VERSION = 6;
 
 function initialState(): DemoState {
   return {
@@ -470,12 +470,23 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
         const parsed = JSON.parse(raw) as { version: number; state: DemoState };
         if (parsed.version === STORAGE_VERSION) {
           // Filtrer tout agent résiduel fictif : seul le compte admin ou agents créés légitimement
-          const validAgents = parsed.state.agents.filter(
+          const validAgents = (parsed.state.agents || []).filter(
             (a) => a.id === "admin-1" || a.dateIncorporation >= "2026-10-09"
           );
+          // Toujours s'assurer que toutes les unités institutionnelles sont présentes
+          const mergedUnites = [...seed.UNITES];
+          for (const u of (parsed.state.unites || [])) {
+            if (!mergedUnites.some((item) => item.id === u.id)) {
+              mergedUnites.push(u);
+            }
+          }
           dispatch({
             type: "HYDRATE",
-            state: { ...parsed.state, agents: validAgents.length ? validAgents : seed.AGENTS },
+            state: {
+              ...parsed.state,
+              unites: mergedUnites,
+              agents: validAgents.length ? validAgents : seed.AGENTS,
+            },
           });
         }
       }
@@ -588,9 +599,10 @@ export function useCurrentUser(): CurrentUser | null {
       const fallbackRole = state.role as AuthRole;
       agent = state.agents.find((a) => a.id === DEMO_ACCOUNTS[fallbackRole]);
     }
-    if (!agent) return null;
-    const unite = state.unites.find((u) => u.id === agent?.uniteId);
-    if (!unite) return null;
+    const unite =
+      state.unites.find((u) => u.id === agent?.uniteId) ||
+      seed.UNITES.find((u) => u.id === agent?.uniteId) ||
+      seed.UNITES[0];
     const role = agent.role;
     return { role, agent, unite, subject: { role, agentId: agent.id, uniteId: agent.uniteId } };
   }, [state.role, state.currentUserId, state.agents, state.unites]);
