@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-surface font-sans text-ink;
+  }
+  /* Focus visible renforcé (RGAA 10.7) */
+  :focus-visible {
+    outline: 2px solid #0a76f6;
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .skip-link {
+    @apply absolute left-2 top-2 z-50 -translate-y-20 bg-gend-900 px-4 py-2 text-sm font-medium text-white transition-transform focus:translate-y-0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

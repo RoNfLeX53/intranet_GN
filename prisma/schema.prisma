@@ -1,0 +1,310 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// -------------------------------------------------------------
+// ENUMS
+// -------------------------------------------------------------
+
+enum Role {
+  VISITEUR
+  AGENT
+  OFFICIER
+  ADMIN
+}
+
+enum Grade {
+  GAV
+  GENDARME
+  MDL_CHEF
+  ADJUDANT
+  ADJUDANT_CHEF
+  MAJOR
+  LIEUTENANT
+  CAPITAINE
+  COMMANDANT
+  LIEUTENANT_COLONEL
+  COLONEL
+}
+
+enum StatutActivite {
+  ACTIF
+  EN_CONGE
+  DETACHE
+  SUSPENDU
+  RADIE
+}
+
+enum QualifJudiciaire {
+  AUCUNE
+  APJ21
+  APJ20
+  OPJ
+}
+
+enum TypeUnite {
+  BRIGADE
+  BR
+  PSIG
+  GROUPEMENT
+}
+
+enum HabilitationType {
+  FICHIERS_CONFIDENTIELS
+  ARMURERIE
+  OPJ
+  APJ
+}
+
+enum HabilitationStatut {
+  EN_ATTENTE
+  VALIDEE
+  REJETEE
+}
+
+enum TypeDossier {
+  FLAGRANT_DELIT
+  ENQUETE_PRELIMINAIRE
+  INTERVENTION
+  COMMISSION_ROGATOIRE
+}
+
+enum ProcedureStatut {
+  OUVERTE
+  TRANSMISE_PARQUET
+  CLASSEE
+}
+
+enum Classification {
+  NON_PROTEGE
+  DIFFUSION_RESTREINTE
+}
+
+enum OffreType {
+  GAV
+  SOUS_OFFICIER
+  OFFICIER
+}
+
+enum EtapeCandidature {
+  DOSSIER_RECU
+  EPREUVES
+  VISITE_MEDICALE
+  RETENU
+  NON_RETENU
+}
+
+// -------------------------------------------------------------
+// MODÈLES PRINCIPAUX
+// -------------------------------------------------------------
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String?   // Optionnel si authentification via OIDC / SSO d'État (FranceConnect / AgentConnect)
+  role         Role      @default(AGENT)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  agent        Agent?
+  auditLogs    AuditLog[]
+
+  @@map("users")
+}
+
+model Unite {
+  id        String     @id @default(uuid())
+  code      String     @unique // Code unité (ex: 4512)
+  nom       String
+  type      TypeUnite
+  createdAt DateTime   @default(now())
+
+  agents     Agent[]
+  procedures Procedure[]
+
+  @@map("unites")
+}
+
+model Agent {
+  id                 String           @id @default(uuid())
+  matricule          String           @unique // 6 chiffres (ex: 245781)
+  nom                String
+  prenom             String
+  grade              Grade
+  affectation        String
+  statut             StatutActivite   @default(ACTIF)
+  qualification      QualifJudiciaire @default(AUCUNE)
+  dateIncorporation  DateTime
+  dateRevocation     DateTime?
+  motifRevocation    String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  userId             String           @unique
+  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  uniteId            String
+  unite              Unite            @relation(fields: [uniteId], references: [id])
+
+  demandes           DemandeHabilitation[] @relation("DemandesFaites")
+  proceduresRedigees Procedure[]           @relation("RedacteurProcedure")
+  proceduresValidees Procedure[]           @relation("ValidateurProcedure")
+  rapports           RapportProcedure[]
+
+  @@index([uniteId])
+  @@index([matricule])
+  @@map("agents")
+}
+
+model DemandeHabilitation {
+  id          String             @id @default(uuid())
+  reference   String             @unique // Ex: HAB-2026-0141
+  type        HabilitationType
+  motif       String             @db.Text
+  dureeMois   Int                @default(6) // 0 = permanente
+  statut      HabilitationStatut @default(EN_ATTENTE)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  demandeurId String
+  demandeur   Agent              @relation("DemandesFaites", fields: [demandeurId], references: [id])
+
+  historique  HistoriqueHabilitation[]
+
+  @@index([demandeurId])
+  @@index([statut])
+  @@map("demandes_habilitation")
+}
+
+model HistoriqueHabilitation {
+  id          String              @id @default(uuid())
+  date        DateTime            @default(now())
+  action      String
+  commentaire String?             @db.Text
+  acteurId    String
+
+  demandeId   String
+  demande     DemandeHabilitation @relation(fields: [demandeId], references: [id], onDelete: Cascade)
+
+  @@map("historique_habilitations")
+}
+
+model Procedure {
+  id             String          @id @default(uuid())
+  numeroPV       String          @unique // Ex: 4512/00341/2026
+  dateFaits      DateTime
+  dateOuverture  DateTime        @default(now())
+  type           TypeDossier
+  qualification  String
+  lieu           String
+  resume         String          @db.Text
+  statut         ProcedureStatut @default(OUVERTE)
+  classification Classification  @default(DIFFUSION_RESTREINTE)
+  parquet        String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  redacteurId    String
+  redacteur      Agent           @relation("RedacteurProcedure", fields: [redacteurId], references: [id])
+
+  uniteId        String
+  unite          Unite           @relation(fields: [uniteId], references: [id])
+
+  valideParId    String?
+  validePar      Agent?          @relation("ValidateurProcedure", fields: [valideParId], references: [id])
+
+  rapports       RapportProcedure[]
+  historique     HistoriqueProcedure[]
+
+  @@index([uniteId])
+  @@index([redacteurId])
+  @@index([statut])
+  @@index([dateFaits])
+  @@map("procedures")
+}
+
+model RapportProcedure {
+  id          String    @id @default(uuid())
+  contenu     String    @db.Text
+  date        DateTime  @default(now())
+
+  procedureId String
+  procedure   Procedure @relation(fields: [procedureId], references: [id], onDelete: Cascade)
+
+  auteurId    String
+  auteur      Agent     @relation(fields: [auteurId], references: [id])
+
+  @@map("rapports_procedure")
+}
+
+model HistoriqueProcedure {
+  id          String    @id @default(uuid())
+  date        DateTime  @default(now())
+  action      String
+  commentaire String?   @db.Text
+  acteurId    String
+
+  procedureId String
+  procedure   Procedure @relation(fields: [procedureId], references: [id], onDelete: Cascade)
+
+  @@map("historique_procedures")
+}
+
+model Candidature {
+  id            String           @id @default(uuid())
+  reference     String           @unique // Ex: CAND-2026-0412
+  offre         OffreType
+  nom           String
+  prenom        String
+  email         String
+  dateNaissance DateTime
+  niveauEtudes  String
+  etape         EtapeCandidature @default(DOSSIER_RECU)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  historique    HistoriqueCandidature[]
+
+  @@index([offre])
+  @@index([etape])
+  @@map("candidatures")
+}
+
+model HistoriqueCandidature {
+  id            String      @id @default(uuid())
+  date          DateTime    @default(now())
+  action        String
+  commentaire   String?     @db.Text
+  acteurId      String?
+
+  candidatureId String
+  candidature   Candidature @relation(fields: [candidatureId], references: [id], onDelete: Cascade)
+
+  @@map("historique_candidatures")
+}
+
+// -------------------------------------------------------------
+// SÉCURITÉ & AUDIT (Chaîne cryptographique)
+// -------------------------------------------------------------
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  date      DateTime @default(now())
+  action    String
+  cible     String
+  ip        String
+  prevHash  String
+  hash      String
+
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([date])
+  @@index([action])
+  @@map("audit_logs")
+}
