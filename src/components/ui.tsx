@@ -24,21 +24,24 @@ export function Badge({ tone = "neutral", children, className }: { tone?: Tone; 
 }
 
 /* ---------- Button ---------- */
-type Variant = "primary" | "secondary" | "tertiary" | "danger";
+type Variant = "primary" | "secondary" | "tertiary" | "danger" | "ghost";
 const VARIANTS: Record<Variant, string> = {
   primary: "bg-gend-900 text-white hover:bg-gend-800",
   secondary: "border border-gend-900 bg-white text-gend-900 hover:bg-gend-50",
   tertiary: "text-gend-900 hover:bg-gend-50",
   danger: "bg-marianne text-white hover:bg-marianne-dark",
+  ghost: "text-ink-soft hover:text-ink hover:bg-gray-100",
 };
 
 export function Button({
   variant = "primary",
   size = "md",
+  icon,
+  children,
   className,
   type = "button",
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: "sm" | "md" }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: "sm" | "md"; icon?: ReactNode }) {
   return (
     <button
       type={type}
@@ -49,7 +52,10 @@ export function Button({
         className,
       )}
       {...props}
-    />
+    >
+      {icon && <span className="shrink-0" aria-hidden>{icon}</span>}
+      {children}
+    </button>
   );
 }
 
@@ -88,16 +94,33 @@ export function PageHeader({ title, subtitle, breadcrumb, actions }: { title: st
 export const inputCls =
   "w-full rounded-t border-0 border-b-2 border-ink bg-surface-alt px-3 py-2 text-sm text-ink placeholder:text-ink-mute focus:border-gend-900 focus:outline-none focus:ring-2 focus:ring-gend-500/40 aria-[invalid=true]:border-marianne";
 
-export function Field({ label, hint, error, htmlFor, children, className }: { label: string; hint?: string; error?: string; htmlFor: string; children: ReactNode; className?: string }) {
+export function Field({
+  label,
+  hint,
+  error,
+  htmlFor,
+  required,
+  children,
+  className,
+}: {
+  label: string;
+  hint?: string;
+  error?: string;
+  htmlFor?: string;
+  required?: boolean;
+  children: ReactNode;
+  className?: string;
+}) {
   return (
     <div className={cx("flex flex-col gap-1", className)}>
-      <label htmlFor={htmlFor} className="text-sm font-medium text-ink">
+      <label {...(htmlFor ? { htmlFor } : {})} className="text-sm font-medium text-ink">
         {label}
+        {required && <span className="ml-1 text-marianne" aria-hidden>*</span>}
         {hint && <span className="block text-xs font-normal text-ink-mute">{hint}</span>}
       </label>
       {children}
       {error && (
-        <p id={`${htmlFor}-error`} className="text-xs font-medium text-marianne-dark" role="alert">
+        <p id={htmlFor ? `${htmlFor}-error` : undefined} className="text-xs font-medium text-marianne-dark" role="alert">
           {error}
         </p>
       )}

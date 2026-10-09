@@ -24,7 +24,10 @@ export default function HomePage() {
                   Découvrir les offres <ArrowRight size={16} aria-hidden />
                 </a>
                 <Link href="/connexion" className="inline-flex items-center gap-2 border border-white px-5 py-3 text-sm font-bold text-white hover:bg-white/10">
-                  <Lock size={16} aria-hidden /> Accès personnels
+                  <Lock size={16} aria-hidden /> Connexion intranet
+                </Link>
+                <Link href="/demande-acces" className="inline-flex items-center gap-2 bg-marianne px-5 py-3 text-sm font-bold text-white hover:bg-marianne-dark">
+                  Demande d&apos;accès agent
                 </Link>
               </div>
             </div>
@@ -40,19 +43,42 @@ export default function HomePage() {
 
         {/* Infos pratiques */}
         <section id="infos" className="mx-auto max-w-6xl px-4 py-12">
-          <h2 className="text-2xl font-bold text-gend-900">Informations pratiques</h2>
+          <h2 className="text-2xl font-bold text-gend-900">Informations pratiques & démarches</h2>
           <div className="mt-6 grid gap-4 md:grid-cols-3">
-            {[
-              { icon: Building2, t: "Trouver une brigade", d: "Horaires d'accueil et coordonnées des unités du département (données fictives)." },
-              { icon: Clock, t: "Pré-plainte en ligne", d: "Pour les atteintes aux biens sans auteur identifié, préparez votre dépôt de plainte." },
-              { icon: Info, t: "Prévention", d: "Opération tranquillité vacances, cybersécurité, prévention routière." },
-            ].map(({ icon: Icon, t, d }) => (
-              <article key={t} className="group border border-line border-b-4 border-b-gend-900 bg-white p-6 transition-shadow hover:shadow-md">
-                <Icon className="text-gend-900" size={28} aria-hidden />
-                <h3 className="mt-3 font-bold text-gend-900">{t}</h3>
-                <p className="mt-1 text-sm text-ink-soft">{d}</p>
-              </article>
-            ))}
+            <Link
+              href="/pre-plainte"
+              className="group flex flex-col justify-between border-2 border-gend-900 bg-white p-6 transition-all hover:bg-gend-50 shadow-sm hover:shadow-md"
+            >
+              <div>
+                <div className="flex items-center justify-between">
+                  <Clock className="text-gend-900" size={28} aria-hidden />
+                  <span className="rounded bg-gend-100 px-2 py-0.5 text-xs font-bold text-gend-900">Télé-procédure</span>
+                </div>
+                <h3 className="mt-3 font-bold text-lg text-gend-900 group-hover:underline">Pré-plainte en ligne</h3>
+                <p className="mt-1 text-sm text-ink-soft">
+                  Pour les atteintes aux biens (vol, dégradation, escroquerie) sans auteur identifié, préparez votre dépôt de plainte avant convocation en brigade.
+                </p>
+              </div>
+              <p className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold text-gend-900">
+                Déposer une pré-plainte <ArrowRight size={16} />
+              </p>
+            </Link>
+
+            <article className="border border-line border-b-4 border-b-gend-900 bg-white p-6 transition-shadow hover:shadow-md">
+              <Building2 className="text-gend-900" size={28} aria-hidden />
+              <h3 className="mt-3 font-bold text-gend-900">Trouver une brigade</h3>
+              <p className="mt-1 text-sm text-ink-soft">
+                Horaires d&apos;accueil et coordonnées des unités territoriales du groupement (BTA Valmont, BR, PSIG).
+              </p>
+            </article>
+
+            <article className="border border-line border-b-4 border-b-gend-900 bg-white p-6 transition-shadow hover:shadow-md">
+              <Info className="text-gend-900" size={28} aria-hidden />
+              <h3 className="mt-3 font-bold text-gend-900">Prévention & Sécurité</h3>
+              <p className="mt-1 text-sm text-ink-soft">
+                Opération tranquillité vacances, protection des entreprises, cybersécurité et sécurité routière.
+              </p>
+            </article>
           </div>
         </section>
 

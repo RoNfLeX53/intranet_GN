@@ -40,6 +40,8 @@ export interface Agent {
   qualification: QualifJudiciaire;
   role: AuthRole;
   email: string;
+  identifiant?: string; // Nom d'utilisateur ou matricule
+  motDePasse?: string;  // Mot de passe transmis à l'agent
   dateIncorporation: string;
   revocation?: { date: string; motif: string; par: string };
 }
@@ -51,13 +53,15 @@ export interface HistoriqueEntry {
   commentaire?: string;
 }
 
-export type HabilitationType = "FICHIERS_CONFIDENTIELS" | "ARMURERIE" | "OPJ" | "APJ";
+export type HabilitationType = "ACCES_PORTAIL" | "FICHIERS_CONFIDENTIELS" | "ARMURERIE" | "OPJ" | "APJ";
 export type HabilitationStatut = "EN_ATTENTE" | "VALIDEE" | "REJETEE";
 
 export interface DemandeHabilitation {
   id: string;
   reference: string;
   demandeurId: string;
+  demandeurNom?: string; // Nom de l'agent si non encore authentifié
+  demandeurEmail?: string;
   type: HabilitationType;
   motif: string;
   /** 0 = permanente */
@@ -95,6 +99,51 @@ export interface Procedure {
   parquet?: string;
   historique: HistoriqueEntry[];
   rapports: Rapport[];
+  auditions?: Audition[];
+}
+
+export type TypeAudition = "VICTIME_PLAINTE" | "TEMOIN" | "MIS_EN_CAUSE_LIBRE" | "GARDE_A_VUE";
+
+export interface Audition {
+  id: string;
+  numeroPV: string;
+  typeAudition: TypeAudition;
+  dateDebut: string;
+  dateFin?: string;
+  lieu: string;
+  cadreLegal: TypeDossier;
+
+  // Personne entendue
+  nom: string;
+  nomUsage?: string;
+  prenom: string;
+  dateNaissance?: string;
+  lieuNaissance?: string;
+  nationalite: string;
+  profession?: string;
+  domicile: string;
+  telephone?: string;
+  email?: string;
+
+  // Droits & formalités
+  droitsNotifies: boolean;
+  avocatDemande: boolean;
+  avocatNom?: string;
+  interprete: boolean;
+  plainteDeposee: boolean;
+  prejudiceChiffre?: number;
+
+  // Corps de l'audition (procès-verbal intégral conforme style officiel)
+  declarations: string;
+
+  // Enquêteur
+  enqueteurId: string;
+  enqueteurNom: string;
+  enqueteurGrade: string;
+  enqueteurQualif: string;
+
+  procedureId: string;
+  createdAt: string;
 }
 
 export type OffreType = "GAV" | "SOUS_OFFICIER" | "OFFICIER";
@@ -133,3 +182,41 @@ export interface AuditLog {
   prevHash: string;
   hash: string;
 }
+
+export type StatutPrePlainte =
+  | "DEPOSEE"
+  | "PRISE_EN_CHARGE"
+  | "CONVOQUEE"
+  | "TRANSFORMEE_EN_PV"
+  | "CLASSEE_SANS_SUITE";
+
+export type TypeInfractionPrePlainte =
+  | "VOL_SIMPLE"
+  | "VOL_EFFRACTION"
+  | "VOL_VEHICULE"
+  | "DEGRADATION_BIEN"
+  | "ESCROQUERIE"
+  | "ABUS_CONFIANCE"
+  | "AUTRE_ATTEINTE_BIENS";
+
+export interface PrePlainte {
+  id: string;
+  numeroDossier: string;
+  typeInfraction: TypeInfractionPrePlainte;
+  dateFaits: string;
+  lieuFaits: string;
+  description: string;
+  auteurInconnu: boolean;
+  prejudiceEstime?: number;
+  statut: StatutPrePlainte;
+  dateRdv?: string;
+  createdAt: string;
+  victimeNom: string;
+  victimePrenom: string;
+  victimeEmail: string;
+  victimeTelephone: string;
+  victimeAdresse: string;
+  uniteId: string;
+  agentId?: string;
+}
+

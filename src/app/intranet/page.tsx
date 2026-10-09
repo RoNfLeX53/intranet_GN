@@ -23,6 +23,9 @@ export default function DashboardPage() {
   );
   const mine = state.habilitations.filter((h) => h.demandeurId === me.agent.id);
   const unitAgents = state.agents.filter((a) => a.uniteId === me.agent.uniteId && a.statut !== "RADIE");
+  const pendingPrePlaintes = (state.prePlaintes ?? []).filter(
+    (p) => p.statut === "DEPOSEE" && (me.role === "ADMIN" || p.uniteId === me.unite.id)
+  );
 
   const kpis =
     me.role === "AGENT"
@@ -58,6 +61,27 @@ export default function DashboardPage() {
           <Kpi key={k.label} {...k} />
         ))}
       </div>
+
+      {pendingPrePlaintes.length > 0 && (
+        <div className="mt-6">
+          <div className="flex items-center justify-between rounded border border-amber-300 bg-amber-50 p-4 text-amber-950">
+            <div>
+              <p className="font-bold text-sm">
+                {pendingPrePlaintes.length} pré-plainte(s) en ligne déposée(s) en attente de traitement
+              </p>
+              <p className="text-xs text-amber-800 mt-0.5">
+                Des victimes ont déposé une télé-déclaration pour votre unité ({me.unite.nom}). Un militaire doit fixer un rendez-vous ou instruire le dossier.
+              </p>
+            </div>
+            <Link
+              href="/intranet/pre-plaintes"
+              className="ml-4 shrink-0 rounded bg-gend-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-gend-800"
+            >
+              Traiter les pré-plaintes
+            </Link>
+          </div>
+        </div>
+      )}
 
       <div className="mt-6 grid gap-6 xl:grid-cols-3">
         {can(me.role, "procedures:read") ? (

@@ -38,18 +38,6 @@ export function IntranetHeader({ onMenu }: { onMenu: () => void }) {
 
         {me && (
           <div className="ml-auto flex items-center gap-3">
-            <label className="hidden items-center gap-2 text-xs text-ink-mute xl:flex">
-              Profil de démo
-              <select
-                value={me.role}
-                onChange={(e) => dispatch({ type: "SET_ROLE", role: e.target.value as AuthRole })}
-                className="border-b-2 border-ink bg-surface-alt px-2 py-1 text-xs text-ink"
-              >
-                <option value="AGENT">{ROLE_LABEL.AGENT}</option>
-                <option value="OFFICIER">{ROLE_LABEL.OFFICIER}</option>
-                <option value="ADMIN">{ROLE_LABEL.ADMIN}</option>
-              </select>
-            </label>
             <div className="hidden text-right sm:block">
               <p className="text-sm font-bold text-ink">
                 {GRADE_ABBR[me.agent.grade]} {me.agent.prenom} {me.agent.nom.toUpperCase()}
@@ -62,7 +50,7 @@ export function IntranetHeader({ onMenu }: { onMenu: () => void }) {
               variant="secondary"
               size="sm"
               onClick={() => {
-                dispatch({ type: "SET_ROLE", role: "VISITEUR" });
+                dispatch({ type: "LOGOUT" });
                 router.push("/connexion");
               }}
             >

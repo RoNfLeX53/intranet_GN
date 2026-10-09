@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileText, KeyRound, LayoutDashboard, ScrollText, ShieldCheck, UserPlus, Users, X, type LucideIcon } from "lucide-react";
+import { Clock, FileText, KeyRound, LayoutDashboard, ScrollText, ShieldCheck, UserPlus, Users, X, type LucideIcon } from "lucide-react";
 import { useCurrentUser, useDemo } from "@/components/store";
 import { can, type Permission } from "@/lib/rbac";
 import { UNITE_TYPE_LABEL } from "@/lib/labels";
@@ -25,6 +25,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
     section: "Activité opérationnelle",
     items: [
       { href: "/intranet/procedures", label: "Procédures judiciaires", icon: FileText, perms: ["procedures:read"] },
+      { href: "/intranet/pre-plaintes", label: "Pré-plaintes en ligne", icon: Clock, perms: ["preplaintes:read"] },
       { href: "/intranet/habilitations", label: "Habilitations", icon: KeyRound, perms: ["habilitations:request", "habilitations:review"] },
     ],
   },
@@ -48,6 +49,9 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   if (!me) return null;
 
   const pendingReview = state.habilitations.filter((h) => h.statut === "EN_ATTENTE").length;
+  const pendingPrePlaintes = (state.prePlaintes ?? []).filter(
+    (p) => p.statut === "DEPOSEE" && (me.role === "ADMIN" || p.uniteId === me.unite.id)
+  ).length;
 
   const isActive = (href: string) => (href === "/intranet" ? pathname === href : pathname.startsWith(href));
 
@@ -103,6 +107,11 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                           {item.href === "/intranet/habilitations" && can(me.role, "habilitations:review") && pendingReview > 0 && (
                             <span className="rounded-full bg-marianne px-2 text-xs font-bold" aria-label={`${pendingReview} demandes en attente`}>
                               {pendingReview}
+                            </span>
+                          )}
+                          {item.href === "/intranet/pre-plaintes" && pendingPrePlaintes > 0 && (
+                            <span className="rounded-full bg-amber-500 text-gend-950 px-2 text-xs font-bold" aria-label={`${pendingPrePlaintes} pré-plaintes reçues`}>
+                              {pendingPrePlaintes}
                             </span>
                           )}
                         </Link>

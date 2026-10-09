@@ -8,8 +8,11 @@ import type {
   QualifJudiciaire,
   Role,
   StatutActivite,
+  StatutPrePlainte,
   Tone,
+  TypeAudition,
   TypeDossier,
+  TypeInfractionPrePlainte,
   TypeUnite,
 } from "./types";
 
@@ -86,6 +89,7 @@ export const TYPE_DOSSIER: Record<TypeDossier, string> = {
 };
 
 export const HABILITATION_TYPE: Record<HabilitationType, string> = {
+  ACCES_PORTAIL: "Demande de compte d'accès (Agent en service)",
   FICHIERS_CONFIDENTIELS: "Accès fichiers confidentiels",
   ARMURERIE: "Accès armurerie",
   OPJ: "Habilitation OPJ",
@@ -113,3 +117,30 @@ export const ETAPE_CANDIDATURE: Record<EtapeCandidature, Labeled> = {
   RETENU: { label: "Retenu", tone: "success" },
   NON_RETENU: { label: "Non retenu", tone: "error" },
 };
+
+export const TYPE_INFRACTION_PRE_PLAINTE: Record<TypeInfractionPrePlainte, string> = {
+  VOL_SIMPLE: "Vol simple (sans effraction)",
+  VOL_EFFRACTION: "Vol avec effraction / Cambriolage",
+  VOL_VEHICULE: "Vol de véhicule ou à la roulotte",
+  DEGRADATION_BIEN: "Dégradation ou vandalisme de bien privé",
+  ESCROQUERIE: "Escroquerie / Filouterie",
+  ABUS_CONFIANCE: "Abus de confiance",
+  AUTRE_ATTEINTE_BIENS: "Autre atteinte aux biens",
+};
+
+export const STATUT_PRE_PLAINTE: Record<StatutPrePlainte, Labeled> = {
+  DEPOSEE: { label: "Déposée en ligne", tone: "warning" },
+  PRISE_EN_CHARGE: { label: "Prise en charge par l'unité", tone: "info" },
+  CONVOQUEE: { label: "Rendez-vous fixé", tone: "navy" },
+  TRANSFORMEE_EN_PV: { label: "Procès-verbal signé (Audition)", tone: "success" },
+  CLASSEE_SANS_SUITE: { label: "Non éligible / Classée", tone: "neutral" },
+};
+
+export const TYPE_AUDITION: Record<TypeAudition, Labeled> = {
+  VICTIME_PLAINTE: { label: "Audition de victime / Déposition de plainte (Art. 15-3 CPP)", tone: "info" },
+  TEMOIN: { label: "Audition de témoin (Art. 62 CPP)", tone: "neutral" },
+  MIS_EN_CAUSE_LIBRE: { label: "Audition libre de suspect (Art. 61-1 CPP)", tone: "warning" },
+  GARDE_A_VUE: { label: "Audition sous Garde à Vue (Art. 63-1 CPP)", tone: "error" },
+};
+
+

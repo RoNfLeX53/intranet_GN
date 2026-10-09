@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Plus, RotateCcw, Search } from "lucide-react";
 import { Guard } from "@/components/intranet/Guard";
 import { ProcedureTable } from "@/components/intranet/ProcedureTable";
@@ -26,6 +26,27 @@ function ProceduresView() {
   const me = useCurrentUser()!;
   const [f, setF] = useState(EMPTY);
   const [creating, setCreating] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  async function reloadProceduresFromDB() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/procedures");
+      const d = await res.json();
+      if (d.success && Array.isArray(d.data)) {
+        dispatch({ type: "SYNC_PROCEDURES", procedures: d.data });
+      }
+    } catch (e) {
+      console.error("Erreur sync procédures:", e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    reloadProceduresFromDB();
+  }, []);
+
   const agentsById = useMemo(() => new Map(state.agents.map((a) => [a.id, a])), [state.agents]);
 
   const visible = useMemo(
@@ -58,11 +79,16 @@ function ProceduresView() {
         subtitle={`Périmètre : ${me.unite.nom} — ${visible.length} dossier(s) accessibles`}
         breadcrumb={<>Intranet › Activité opérationnelle › Procédures</>}
         actions={
-          can(me.role, "procedures:create") && (
-            <Button onClick={() => setCreating(true)}>
-              <Plus size={16} aria-hidden /> Nouvelle procédure
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={reloadProceduresFromDB} disabled={loading}>
+              {loading ? "Synchronisation..." : "Rafraîchir"}
             </Button>
-          )
+            {can(me.role, "procedures:create") && (
+              <Button onClick={() => setCreating(true)}>
+                <Plus size={16} aria-hidden /> Nouvelle procédure
+              </Button>
+            )}
+          </div>
         }
       />
 
@@ -134,19 +160,23 @@ function NewProcedureModal({
   const { state } = useDemo();
   const me = useCurrentUser()!;
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function submit(e: FormEvent<HTMLFormElement>) {
+  async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setError("");
     const fd = new FormData(e.currentTarget);
     const v = (k: string) => String(fd.get(k) ?? "").trim();
     if (!v("qualification") || !v("dateFaits") || !v("lieu") || v("resume").length < 20) {
       setError("Tous les champs sont obligatoires ; le résumé doit comporter au moins 20 caractères.");
       return;
     }
+
+    setLoading(true);
     const seq =
       Math.max(0, ...state.procedures.filter((p) => p.uniteId === me.unite.id).map((p) => Number(p.numeroPV.split("/")[1]))) + 1;
     const now = nowLocal();
-    onCreate({
+    const newProc = {
       id: uid(),
       numeroPV: `${me.unite.code}/${String(seq).padStart(5, "0")}/${now.slice(0, 4)}`,
       dateFaits: `${v("dateFaits")}T00:00:00`,
@@ -161,20 +191,34 @@ function NewProcedureModal({
       classification: v("classification") as Classification,
       historique: [{ date: now, acteurId: me.agent.id, action: "Ouverture de la procédure" }],
       rapports: [],
-    });
+      auditions: [],
+    };
+
+    try {
+      await fetch("/api/procedures", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newProc),
+      });
+    } catch (err) {
+      console.error("Erreur enregistrement procédure BD:", err);
+    }
+
+    onCreate(newProc);
+    setLoading(false);
     setError("");
     onClose();
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Nouvelle procédure" size="lg">
+    <Modal open={open} onClose={onClose} title="Nouvelle procédure judiciaire" size="lg">
       <form onSubmit={submit} className="grid gap-4 md:grid-cols-2" noValidate>
         {error && (
           <p className="text-sm font-medium text-marianne-dark md:col-span-2" role="alert">
             {error}
           </p>
         )}
-        <Field label="Type de dossier" htmlFor="n-type">
+        <Field label="Type de dossier (cadre d'enquête)" htmlFor="n-type">
           <select id="n-type" name="type" className={inputCls} defaultValue="FLAGRANT_DELIT">
             {Object.entries(TYPE_DOSSIER).map(([k, v]) => (
               <option key={k} value={k}>{v}</option>
@@ -182,13 +226,13 @@ function NewProcedureModal({
           </select>
         </Field>
         <Field label="Date des faits" htmlFor="n-date">
-          <input id="n-date" name="dateFaits" type="date" className={inputCls} />
+          <input id="n-date" name="dateFaits" type="date" className={inputCls} defaultValue={nowLocal().slice(0, 10)} />
         </Field>
         <Field label="Qualification de l'infraction" htmlFor="n-qualif" className="md:col-span-2">
-          <input id="n-qualif" name="qualification" className={inputCls} placeholder="ex. Vol simple" />
+          <input id="n-qualif" name="qualification" className={inputCls} placeholder="ex. Vol avec effraction, Dégradations..." />
         </Field>
         <Field label="Lieu des faits" htmlFor="n-lieu">
-          <input id="n-lieu" name="lieu" className={inputCls} />
+          <input id="n-lieu" name="lieu" className={inputCls} placeholder="ex. Commune, voie publique..." />
         </Field>
         <Field label="Classification" htmlFor="n-classif">
           <select id="n-classif" name="classification" className={inputCls} defaultValue="DIFFUSION_RESTREINTE">
@@ -197,14 +241,14 @@ function NewProcedureModal({
           </select>
         </Field>
         <Field label="Résumé des faits" htmlFor="n-resume" className="md:col-span-2">
-          <textarea id="n-resume" name="resume" rows={4} className={inputCls} />
+          <textarea id="n-resume" name="resume" rows={4} className={inputCls} placeholder="Circonstances constatées ou rapportées par les victimes / témoins..." />
         </Field>
         <p className="text-xs text-ink-mute md:col-span-2">
-          Rédacteur : {me.agent.prenom} {me.agent.nom.toUpperCase()} ({me.agent.matricule}) · Numéro de PV attribué automatiquement.
+          Rédacteur : {me.agent.prenom} {me.agent.nom.toUpperCase()} ({me.agent.matricule}) · Numéro de PV attribué automatiquement selon le registre de l&apos;unité.
         </p>
         <div className="flex justify-end gap-2 md:col-span-2">
-          <Button variant="secondary" onClick={onClose}>Annuler</Button>
-          <Button type="submit">Créer la procédure</Button>
+          <Button variant="secondary" onClick={onClose} disabled={loading}>Annuler</Button>
+          <Button type="submit" disabled={loading}>{loading ? "Enregistrement..." : "Créer la procédure"}</Button>
         </div>
       </form>
     </Modal>

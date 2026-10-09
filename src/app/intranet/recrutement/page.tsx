@@ -1,12 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, ChevronRight, Filter, Search, UserCheck } from "lucide-react";
+import { Check, ChevronRight, Copy, Filter, Search, UserCheck } from "lucide-react";
 import { Guard } from "@/components/intranet/Guard";
-import { useDemo } from "@/components/store";
-import { Badge, Button, Card, EmptyState, Field, inputCls, PageHeader, Td, Th } from "@/components/ui";
-import { ETAPE_CANDIDATURE, ETAPES_CANDIDATURE, OFFRE_LABEL } from "@/lib/labels";
-import type { Candidature, EtapeCandidature, OffreType } from "@/lib/types";
+import { useCurrentUser, useDemo } from "@/components/store";
+import { Alert, Badge, Button, Card, EmptyState, Field, inputCls, Modal, PageHeader, Td, Th } from "@/components/ui";
+import { ETAPE_CANDIDATURE, ETAPES_CANDIDATURE, GRADE_ABBR, GRADE_LABEL, OFFRE_LABEL, ROLE_LABEL } from "@/lib/labels";
+import type { Agent, AuthRole, Candidature, EtapeCandidature, Grade, OffreType, QualifJudiciaire, StatutActivite } from "@/lib/types";
 import { fmtDate, fmtDateTime } from "@/lib/utils";
 
 export default function RecrutementBackofficePage() {
@@ -19,10 +19,22 @@ export default function RecrutementBackofficePage() {
 
 function RecrutementBackofficeView() {
   const { state, dispatch } = useDemo();
+  const me = useCurrentUser();
   const [q, setQ] = useState("");
   const [offre, setOffre] = useState("");
   const [etape, setEtape] = useState<string>("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // État de modal pour acceptation & génération des identifiants
+  const [acceptingCand, setAcceptingCand] = useState<Candidature | null>(null);
+  const [acceptedCredentials, setAcceptedCredentials] = useState<{
+    nomComplet: string;
+    matricule: string;
+    identifiant: string;
+    motDePasse: string;
+    grade: string;
+    affectation: string;
+  } | null>(null);
 
   const filtered = useMemo(() => {
     const search = q.toLowerCase();
@@ -42,9 +54,40 @@ function RecrutementBackofficeView() {
     <>
       <PageHeader
         title="Pôle Recrutement — Back-office"
-        subtitle="Gestion et suivi des candidatures d'incorporation (GAV, Sous-officier, Officier)"
+        subtitle="Gestion, instruction et acceptation des candidatures avec génération des identifiants intranet"
         breadcrumb={<>Intranet › Ressources humaines › Recrutement</>}
       />
+
+      {/* Alerte si des identifiants viennent d'être générés */}
+      {acceptedCredentials && (
+        <div className="mb-6">
+          <Alert tone="success" title="Candidature retenue — Accès intranet activé">
+            <div className="space-y-2 mt-1">
+              <p className="text-sm">
+                L&apos;agent <strong>{acceptedCredentials.nomComplet}</strong> ({acceptedCredentials.grade}) a été incorporé avec succès.
+                Voici ses identifiants de connexion officiels à lui transmettre :
+              </p>
+              <div className="bg-surface-alt border border-line p-3 rounded font-mono text-xs flex flex-wrap gap-4 items-center">
+                <div>
+                  <span className="text-ink-mute block">Identifiant / Matricule</span>
+                  <strong className="text-gend-900 text-sm">{acceptedCredentials.identifiant}</strong>
+                </div>
+                <div>
+                  <span className="text-ink-mute block">Mot de passe provisoire</span>
+                  <strong className="text-marianne-dark text-sm">{acceptedCredentials.motDePasse}</strong>
+                </div>
+                <div>
+                  <span className="text-ink-mute block">Affectation</span>
+                  <span className="text-ink text-sm">{acceptedCredentials.affectation}</span>
+                </div>
+              </div>
+              <p className="text-xs text-ink-mute">
+                Ces identifiants sont immédiatement utilisables sur la page de connexion intranet.
+              </p>
+            </div>
+          </Alert>
+        </div>
+      )}
 
       {/* KPI mini-bar */}
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -176,6 +219,29 @@ function RecrutementBackofficeView() {
                   </div>
                 </dl>
 
+                {/* Bouton d'incorporation directe / acceptation */}
+                {selected.etape !== "RETENU" ? (
+                  <div className="bg-gend-50 border border-gend-200 p-3 rounded">
+                    <p className="text-xs font-bold text-gend-900 uppercase tracking-wide mb-1">
+                      Action Administrateur
+                    </p>
+                    <p className="text-xs text-ink-mute mb-3">
+                      Valider l&apos;incorporation de ce candidat et lui attribuer son matricule et mot de passe d&apos;accès intranet.
+                    </p>
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      onClick={() => setAcceptingCand(selected)}
+                    >
+                      <UserCheck size={16} aria-hidden /> Accepter la candidature & Créer l&apos;accès
+                    </Button>
+                  </div>
+                ) : (
+                  <Alert tone="success" title="Candidat Retenu">
+                    Ce candidat a été accepté dans les rangs de la Gendarmerie.
+                  </Alert>
+                )}
+
                 <div>
                   <h4 className="text-xs font-bold uppercase tracking-wider text-ink-mute mb-2">
                     Progression du recrutement
@@ -200,7 +266,13 @@ function RecrutementBackofficeView() {
                             <Button
                               size="sm"
                               variant="secondary"
-                              onClick={() => dispatch({ type: "CANDIDATURE_MOVE", id: selected.id, etape: et })}
+                              onClick={() => {
+                                if (et === "RETENU") {
+                                  setAcceptingCand(selected);
+                                } else {
+                                  dispatch({ type: "CANDIDATURE_MOVE", id: selected.id, etape: et });
+                                }
+                              }}
                             >
                               Basculer
                             </Button>
@@ -232,6 +304,198 @@ function RecrutementBackofficeView() {
           )}
         </div>
       </div>
+
+      {/* Modal d'acceptation et de génération des identifiants */}
+      {acceptingCand && (
+        <AcceptCandidatureModal
+          candidature={acceptingCand}
+          onClose={() => setAcceptingCand(null)}
+          onConfirm={(agentData) => {
+            dispatch({
+              type: "ACCEPT_CANDIDATURE_AND_CREATE_AGENT",
+              candidatureId: acceptingCand.id,
+              agentData,
+            });
+            setAcceptedCredentials({
+              nomComplet: `${agentData.prenom} ${agentData.nom.toUpperCase()}`,
+              matricule: agentData.matricule,
+              identifiant: agentData.identifiant ?? agentData.matricule,
+              motDePasse: agentData.motDePasse ?? "Gend2026!",
+              grade: GRADE_LABEL[agentData.grade],
+              affectation: agentData.affectation,
+            });
+            setAcceptingCand(null);
+          }}
+        />
+      )}
     </>
+  );
+}
+
+function AcceptCandidatureModal({
+  candidature,
+  onClose,
+  onConfirm,
+}: {
+  candidature: Candidature;
+  onClose: () => void;
+  onConfirm: (agentData: Omit<Agent, "id" | "dateIncorporation">) => void;
+}) {
+  const { state } = useDemo();
+
+  // Générer un matricule aléatoire ou incrémentiel (6 chiffres)
+  const defaultMatricule = useMemo(() => {
+    let num = 270000 + state.agents.length + 1;
+    while (state.agents.some((a) => a.matricule === String(num))) {
+      num++;
+    }
+    return String(num);
+  }, [state.agents]);
+
+  // Déduire un grade par défaut selon l'offre
+  const defaultGrade: Grade =
+    candidature.offre === "GAV"
+      ? "GAV"
+      : candidature.offre === "OFFICIER"
+      ? "LIEUTENANT"
+      : "GENDARME";
+
+  const defaultRole: AuthRole =
+    candidature.offre === "OFFICIER" ? "OFFICIER" : "AGENT";
+
+  // Identifiant par défaut : première lettre prénom + nom en minuscule (ex: c.dubois ou le matricule)
+  const defaultIdentifiant = `${candidature.prenom.charAt(0).toLowerCase()}${candidature.nom.toLowerCase()}`.replace(/[^a-z0-9]/g, "");
+
+  const [matricule, setMatricule] = useState(defaultMatricule);
+  const [identifiant, setIdentifiant] = useState(defaultIdentifiant);
+  const [motDePasse, setMotDePasse] = useState("Gend2026!");
+  const [grade, setGrade] = useState<Grade>(defaultGrade);
+  const [role, setRole] = useState<AuthRole>(defaultRole);
+  const [uniteId, setUniteId] = useState("u1");
+  const [affectation, setAffectation] = useState(
+    candidature.offre === "GAV" ? "Accueil & Patrouille de brigade" : "Gendarme de brigade territoriale"
+  );
+  const [qualification, setQualification] = useState<QualifJudiciaire>(
+    candidature.offre === "GAV" ? "APJ21" : candidature.offre === "OFFICIER" ? "OPJ" : "APJ20"
+  );
+
+  return (
+    <Modal
+      open={true}
+      onClose={onClose}
+      title={`Accepter la candidature : ${candidature.prenom} ${candidature.nom.toUpperCase()}`}
+      size="lg"
+    >
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onConfirm({
+            matricule,
+            nom: candidature.nom,
+            prenom: candidature.prenom,
+            grade,
+            uniteId,
+            affectation,
+            statut: "ACTIF" as StatutActivite,
+            qualification,
+            role,
+            email: candidature.email,
+            identifiant: identifiant || matricule,
+            motDePasse: motDePasse || "Gend2026!",
+          });
+        }}
+        className="space-y-4"
+      >
+        <Alert tone="info" title="Création du profil agent & Identifiants intranet">
+          La validation de cette candidature créera automatiquement l&apos;agent dans l&apos;annuaire opérationnel avec les identifiants définis ci-dessous.
+        </Alert>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Matricule (6 chiffres)" htmlFor="m-matricule">
+            <input
+              id="m-matricule"
+              value={matricule}
+              onChange={(e) => setMatricule(e.target.value)}
+              className={`${inputCls} font-mono`}
+              maxLength={6}
+              required
+            />
+          </Field>
+          <Field label="Identifiant de connexion" hint="Nom d'utilisateur ou matricule" htmlFor="m-identifiant">
+            <input
+              id="m-identifiant"
+              value={identifiant}
+              onChange={(e) => setIdentifiant(e.target.value)}
+              className={`${inputCls} font-mono`}
+              required
+            />
+          </Field>
+
+          <Field label="Mot de passe provisoire" hint="Fourni au candidat accepté" htmlFor="m-mdp" className="sm:col-span-2">
+            <input
+              id="m-mdp"
+              value={motDePasse}
+              onChange={(e) => setMotDePasse(e.target.value)}
+              className={`${inputCls} font-mono`}
+              required
+            />
+          </Field>
+
+          <Field label="Grade d'incorporation" htmlFor="m-grade">
+            <select
+              id="m-grade"
+              value={grade}
+              onChange={(e) => setGrade(e.target.value as Grade)}
+              className={inputCls}
+            >
+              {(Object.keys(GRADE_LABEL) as Grade[]).map((g) => (
+                <option key={g} value={g}>{GRADE_LABEL[g]} ({GRADE_ABBR[g]})</option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="Rôle applicatif" htmlFor="m-role">
+            <select
+              id="m-role"
+              value={role}
+              onChange={(e) => setRole(e.target.value as AuthRole)}
+              className={inputCls}
+            >
+              {(["AGENT", "OFFICIER", "ADMIN"] as AuthRole[]).map((r) => (
+                <option key={r} value={r}>{ROLE_LABEL[r]}</option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="Unité d'affectation" htmlFor="m-unite">
+            <select
+              id="m-unite"
+              value={uniteId}
+              onChange={(e) => setUniteId(e.target.value)}
+              className={inputCls}
+            >
+              {state.unites.map((u) => (
+                <option key={u.id} value={u.id}>{u.nom}</option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="Affectation / Poste" htmlFor="m-affectation">
+            <input
+              id="m-affectation"
+              value={affectation}
+              onChange={(e) => setAffectation(e.target.value)}
+              className={inputCls}
+              required
+            />
+          </Field>
+        </div>
+
+        <div className="flex justify-end gap-2 pt-3 border-t border-line">
+          <Button variant="secondary" onClick={onClose}>Annuler</Button>
+          <Button type="submit">Valider & Générer les accès</Button>
+        </div>
+      </form>
+    </Modal>
   );
 }

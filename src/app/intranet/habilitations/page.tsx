@@ -166,7 +166,9 @@ function DemandeRow({ h, agents, actions }: { h: DemandeHabilitation; agents: Ma
           </div>
           <p className="mt-1 font-bold text-gend-900">{HABILITATION_TYPE[h.type]}</p>
           <p className="text-sm text-ink-soft">
-            {d ? `${GRADE_ABBR[d.grade]} ${d.prenom} ${d.nom.toUpperCase()} (Mle ${d.matricule})` : "—"} · déposée le {fmtDate(h.createdAt)} · durée{" "}
+            {d
+              ? `${GRADE_ABBR[d.grade]} ${d.prenom} ${d.nom.toUpperCase()} (Mle ${d.matricule})`
+              : h.demandeurNom ?? "Agent demandeur en attente d'incorporation"} · déposée le {fmtDate(h.createdAt)} · durée{" "}
             {h.dureeMois === 0 ? "permanente" : `${h.dureeMois} mois`}
           </p>
           <p className="mt-2 text-sm text-ink">{h.motif}</p>

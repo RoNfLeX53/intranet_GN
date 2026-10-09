@@ -1,6 +1,7 @@
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 generator client {
@@ -126,6 +127,7 @@ model Unite {
 
   agents     Agent[]
   procedures Procedure[]
+  prePlaintes PrePlainte[]
 
   @@map("unites")
 }
@@ -219,6 +221,7 @@ model Procedure {
   validePar      Agent?          @relation("ValidateurProcedure", fields: [valideParId], references: [id])
 
   rapports       RapportProcedure[]
+  auditions      Audition[]
   historique     HistoriqueProcedure[]
 
   @@index([uniteId])
@@ -240,6 +243,62 @@ model RapportProcedure {
   auteur      Agent     @relation(fields: [auteurId], references: [id])
 
   @@map("rapports_procedure")
+}
+
+enum TypeAudition {
+  VICTIME_PLAINTE
+  TEMOIN
+  MIS_EN_CAUSE_LIBRE
+  GARDE_A_VUE
+}
+
+model Audition {
+  id               String        @id @default(uuid())
+  numeroPV         String        // Ex: 4512/00341-AUD-1
+  typeAudition     TypeAudition  @default(VICTIME_PLAINTE)
+  dateDebut        DateTime      @default(now())
+  dateFin          DateTime?
+  lieu             String        // Ex: Dans les locaux de la BTA de Valmont-sur-Loire
+  cadreLegal       TypeDossier   // Enquête préliminaire, Flagrant délit...
+
+  // Personne auditionnée
+  nom              String
+  nomUsage         String?
+  prenom           String
+  dateNaissance    DateTime?
+  lieuNaissance    String?
+  nationalite      String        @default("Française")
+  profession       String?
+  domicile         String
+  telephone        String?
+  email            String?
+
+  // Droits & formalités
+  droitsNotifies   Boolean       @default(true)
+  avocatDemande    Boolean       @default(false)
+  avocatNom        String?
+  interprete       Boolean       @default(false)
+  plainteDeposee   Boolean       @default(false)
+  prejudiceChiffre Float?
+
+  // Corps de l'audition (procès-verbal intégral conforme style officiel)
+  declarations     String        @db.Text
+
+  // Enquêteur qui a procédé à l'audition
+  enqueteurId      String
+  enqueteurNom     String
+  enqueteurGrade   String
+  enqueteurQualif  String        // OPJ, APJ, APJA
+
+  procedureId      String
+  procedure        Procedure     @relation(fields: [procedureId], references: [id], onDelete: Cascade)
+
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([procedureId])
+  @@index([typeAudition])
+  @@map("auditions")
 }
 
 model HistoriqueProcedure {
@@ -307,4 +366,60 @@ model AuditLog {
   @@index([date])
   @@index([action])
   @@map("audit_logs")
+}
+
+// -------------------------------------------------------------
+// MODULE DE PRÉ-PLAINTE EN LIGNE (Conforme cadre officiel)
+// -------------------------------------------------------------
+
+enum StatutPrePlainte {
+  DEPOSEE
+  PRISE_EN_CHARGE
+  CONVOQUEE
+  TRANSFORMEE_EN_PV
+  CLASSEE_SANS_SUITE
+}
+
+enum TypeInfractionPrePlainte {
+  VOL_SIMPLE
+  VOL_EFFRACTION
+  VOL_VEHICULE
+  DEGRADATION_BIEN
+  ESCROQUERIE
+  ABUS_CONFIANCE
+  AUTRE_ATTEINTE_BIENS
+}
+
+model PrePlainte {
+  id               String                   @id @default(uuid())
+  numeroDossier    String                   @unique // Ex: PP-2026-0814
+  typeInfraction   TypeInfractionPrePlainte
+  dateFaits        DateTime
+  lieuFaits        String
+  description      String                   @db.Text
+  auteurInconnu    Boolean                  @default(true) // Pré-plainte requiert légalement un auteur inconnu
+  prejudiceEstime  Float?
+  statut           StatutPrePlainte         @default(DEPOSEE)
+  dateRdv          DateTime?
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+
+  // Données de la victime / plaignant
+  victimeNom       String
+  victimePrenom    String
+  victimeEmail     String
+  victimeTelephone String
+  victimeAdresse   String
+
+  // Unité territoriale saisie
+  uniteId          String
+  unite            Unite                    @relation(fields: [uniteId], references: [id])
+
+  // Agent instructeur éventuel
+  agentId          String?
+
+  @@index([uniteId])
+  @@index([statut])
+  @@index([numeroDossier])
+  @@map("pre_plaintes")
 }

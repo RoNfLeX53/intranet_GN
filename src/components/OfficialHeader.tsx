@@ -71,6 +71,9 @@ export function PublicHeader() {
           </span>
         </Link>
         <div className="ml-auto flex items-center gap-2">
+          <Link href="/demande-acces" className="hidden px-3 py-2 text-sm font-medium text-gend-900 hover:bg-gend-50 md:inline-flex">
+            Demande d&apos;accès agent
+          </Link>
           <a href="#recrutement" className="hidden px-3 py-2 text-sm font-medium text-gend-900 hover:bg-gend-50 sm:inline-flex">Recrutement</a>
           <Link href="/connexion" className="inline-flex items-center gap-2 bg-gend-900 px-4 py-2 text-sm font-medium text-white hover:bg-gend-800">
             <Lock size={16} aria-hidden /> Accès intranet
@@ -80,16 +83,17 @@ export function PublicHeader() {
       <nav aria-label="Menu principal" className="border-t border-line">
         <ul className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 text-sm font-medium">
           {[
-            ["Accueil", "#contenu"],
-            ["Informations pratiques", "#infos"],
-            ["Nos missions", "#missions"],
-            ["Recrutement", "#recrutement"],
-            ["Candidater", "#candidature"],
+            ["Accueil", "/"],
+            ["Pré-plainte en ligne", "/pre-plainte"],
+            ["Informations pratiques", "/#infos"],
+            ["Nos missions", "/#missions"],
+            ["Recrutement", "/#recrutement"],
+            ["Demande d'accès agent", "/demande-acces"],
           ].map(([label, href], i) => (
             <li key={href}>
-              <a href={href} className={cx("inline-block whitespace-nowrap px-4 py-3 hover:bg-gend-50", i === 0 && "border-b-2 border-gend-900 text-gend-900")}>
+              <Link href={href} className={cx("inline-block whitespace-nowrap px-4 py-3 hover:bg-gend-50", i === 0 && "border-b-2 border-gend-900 text-gend-900")}>
                 {label}
-              </a>
+              </Link>
             </li>
           ))}
         </ul>

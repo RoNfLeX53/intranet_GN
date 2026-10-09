@@ -1,87 +1,146 @@
 "use client";
 
+import { useState, type FormEvent } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { KeyRound, Lock, ShieldCheck } from "lucide-react";
+import { KeyRound, Lock, ShieldAlert, ShieldCheck, UserCheck } from "lucide-react";
 import { PublicFooter, PublicHeader } from "@/components/OfficialHeader";
 import { useDemo } from "@/components/store";
 import { Alert, Button, Field, inputCls } from "@/components/ui";
-import { GRADE_ABBR, ROLE_LABEL } from "@/lib/labels";
-import { DEMO_ACCOUNTS } from "@/lib/mock-data";
-import type { AuthRole } from "@/lib/types";
-
-const DESCRIPTIONS: Record<AuthRole, string> = {
-  AGENT: "Consultation des dossiers de l'unité, saisie de rapports, demandes d'habilitation.",
-  OFFICIER: "Validation des procédures, instruction des habilitations de l'unité.",
-  ADMIN: "Gestion des effectifs, attribution des rôles, recrutement, journal d'audit.",
-};
 
 export default function ConnexionPage() {
   const { state, dispatch } = useDemo();
   const router = useRouter();
 
-  function login(role: AuthRole) {
-    dispatch({ type: "SET_ROLE", role });
+  const [identifiant, setIdentifiant] = useState("");
+  const [motDePasse, setMotDePasse] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+
+    const loginTrim = identifiant.trim().toLowerCase();
+    const passTrim = motDePasse.trim();
+
+    if (!loginTrim || !passTrim) {
+      setError("Veuillez renseigner votre identifiant et votre mot de passe.");
+      return;
+    }
+
+    // Chercher l'agent correspondant soit par matricule soit par identifiant
+    const agent = state.agents.find(
+      (a) =>
+        (a.matricule.toLowerCase() === loginTrim ||
+          (a.identifiant && a.identifiant.toLowerCase() === loginTrim)) &&
+        a.statut !== "RADIE"
+    );
+
+    if (!agent) {
+      setError("Identifiant ou mot de passe invalide. En cas d'incorporation récente, vérifiez auprès de l'administrateur.");
+      return;
+    }
+
+    // Vérifier mot de passe (si défini dans le profil ou fallback Gend2026! / Admin2026!)
+    const expectedPassword = agent.motDePasse ?? (agent.role === "ADMIN" ? "Admin2026!" : "Gend2026!");
+
+    if (passTrim !== expectedPassword) {
+      setError("Mot de passe incorrect.");
+      return;
+    }
+
+    // Connexion réussie
+    dispatch({ type: "LOGIN", agentId: agent.id });
     router.push("/intranet");
   }
 
   return (
     <>
       <PublicHeader />
-      <main id="contenu" className="mx-auto grid max-w-6xl gap-8 px-4 py-12 lg:grid-cols-2">
-        <section className="border border-line bg-white p-8">
-          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-marianne">
+      <main id="contenu" className="mx-auto max-w-xl px-4 py-14">
+        <section className="border border-line bg-white p-8 md:p-10 shadow-sm border-t-4 border-t-gend-900">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-marianne">
             <Lock size={14} aria-hidden /> Accès réservé aux personnels
-          </p>
+          </div>
           <h1 className="mt-2 text-2xl font-bold text-gend-900">Connexion à l&apos;intranet</h1>
           <p className="mt-2 text-sm text-ink-soft">
-            En production : authentification unique (OIDC) auprès du fournisseur d&apos;identité ministériel, avec second facteur obligatoire (carte agent
-            / clé FIDO2).
+            Espace sécurisé de la Gendarmerie nationale. Renseignez les identifiants qui vous ont été communiqués lors de l&apos;acceptation de votre dossier ou par votre commandement.
           </p>
-          <form className="mt-6 space-y-4" onSubmit={(e) => e.preventDefault()} aria-describedby="demo-note">
-            <Field label="Identifiant (matricule)" htmlFor="login">
-              <input id="login" className={inputCls} disabled placeholder="ex. 245781" autoComplete="username" />
-            </Field>
-            <Field label="Mot de passe" htmlFor="password">
-              <input id="password" type="password" className={inputCls} disabled autoComplete="current-password" />
-            </Field>
-            <Button type="submit" disabled className="w-full">
-              <KeyRound size={16} aria-hidden /> Se connecter avec la carte agent
-            </Button>
-          </form>
-          <div id="demo-note" className="mt-6">
-            <Alert tone="info" title="Mode démonstration">
-              L&apos;authentification réelle est désactivée. Choisissez un profil fictif ci-contre pour explorer le contrôle d&apos;accès par rôles.
-            </Alert>
-          </div>
-        </section>
 
-        <section aria-labelledby="profils-title">
-          <h2 id="profils-title" className="text-lg font-bold text-gend-900">Profils de démonstration</h2>
-          <ul className="mt-4 space-y-3">
-            {(Object.keys(DEMO_ACCOUNTS) as AuthRole[]).map((role) => {
-              const a = state.agents.find((x) => x.id === DEMO_ACCOUNTS[role]);
-              if (!a) return null;
-              return (
-                <li key={role}>
-                  <button
-                    type="button"
-                    onClick={() => login(role)}
-                    className="group flex w-full items-start gap-4 border border-line border-l-4 border-l-gend-900 bg-white p-5 text-left transition-colors hover:border-l-marianne hover:bg-gend-50"
-                  >
-                    <ShieldCheck className="mt-0.5 shrink-0 text-gend-900" size={24} aria-hidden />
-                    <span className="flex-1">
-                      <span className="block font-bold text-gend-900">{ROLE_LABEL[role]}</span>
-                      <span className="block text-sm text-ink">
-                        {GRADE_ABBR[a.grade]} {a.prenom} {a.nom.toUpperCase()} · Mle {a.matricule}
-                      </span>
-                      <span className="mt-1 block text-xs text-ink-mute">{DESCRIPTIONS[role]}</span>
-                    </span>
-                    <span className="self-center text-sm font-bold text-gend-900 group-hover:underline">Entrer →</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+          {error && (
+            <div className="mt-5">
+              <Alert tone="error" title="Échec d'authentification">
+                <span className="flex items-center gap-2">
+                  <ShieldAlert size={16} aria-hidden /> {error}
+                </span>
+              </Alert>
+            </div>
+          )}
+
+          <form className="mt-6 space-y-5" onSubmit={handleSubmit} noValidate>
+            <Field
+              label="Identifiant ou Matricule"
+              hint="Exemple : votre matricule (6 chiffres) ou nom d'utilisateur"
+              htmlFor="login"
+            >
+              <input
+                id="login"
+                value={identifiant}
+                onChange={(e) => setIdentifiant(e.target.value)}
+                className={`${inputCls} font-mono`}
+                placeholder="ex. 245781 ou admin"
+                autoComplete="username"
+                autoFocus
+                required
+              />
+            </Field>
+
+            <Field
+              label="Mot de passe"
+              hint="Mot de passe remis lors de l'incorporation"
+              htmlFor="password"
+            >
+              <input
+                id="password"
+                type="password"
+                value={motDePasse}
+                onChange={(e) => setMotDePasse(e.target.value)}
+                className={inputCls}
+                placeholder="••••••••••••"
+                autoComplete="current-password"
+                required
+              />
+            </Field>
+
+            <div className="pt-2">
+              <Button type="submit" className="w-full justify-center">
+                <KeyRound size={16} aria-hidden /> S&apos;identifier et accéder à l&apos;intranet
+              </Button>
+            </div>
+          </form>
+
+          <div className="mt-8 border-t border-line pt-5 text-xs text-ink-mute space-y-3">
+            <div className="bg-gend-50 border border-gend-200 p-3.5 rounded text-ink">
+              <p className="font-bold text-gend-900 text-sm mb-1 flex items-center gap-1.5">
+                <UserCheck size={16} /> Vous êtes gendarme en service et n&apos;avez pas encore d&apos;identifiant ?
+              </p>
+              <p className="text-xs text-ink-soft mb-2.5">
+                Déposez une demande d&apos;accès initial avec votre matricule officiel. Votre compte sera activé par le bureau RH / DSI.
+              </p>
+              <Link href="/demande-acces">
+                <Button size="sm" variant="secondary" className="w-full sm:w-auto">
+                  Déposer une demande d&apos;accès agent →
+                </Button>
+              </Link>
+            </div>
+
+            <p className="flex items-center gap-1.5 font-bold text-gend-900 pt-2">
+              <ShieldCheck size={14} /> Accès d&apos;administration initial
+            </p>
+            <p>
+              • <strong>Compte Administrateur RH / SI :</strong> Identifiant <code>admin</code> (ou <code>176540</code>) / Mot de passe : <code>Admin2026!</code>
+            </p>
+          </div>
         </section>
       </main>
       <PublicFooter />

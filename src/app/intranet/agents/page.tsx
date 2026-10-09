@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Ban, Pencil, Search, UserPlus } from "lucide-react";
 import { Guard } from "@/components/intranet/Guard";
 import { useCurrentUser, useDemo } from "@/components/store";
@@ -27,6 +27,26 @@ function AgentsView() {
   const [statut, setStatut] = useState("");
   const [editing, setEditing] = useState<Agent | "new" | null>(null);
   const [revoking, setRevoking] = useState<Agent | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function reloadAgentsFromDB() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/agents");
+      const d = await res.json();
+      if (d.success && Array.isArray(d.data)) {
+        dispatch({ type: "SYNC_AGENTS", agents: d.data });
+      }
+    } catch (e) {
+      console.error("Erreur sync agents:", e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    reloadAgentsFromDB();
+  }, []);
 
   const unitesById = useMemo(() => new Map(state.unites.map((u) => [u.id, u])), [state.unites]);
 
@@ -44,14 +64,19 @@ function AgentsView() {
     <>
       <PageHeader
         title="Effectifs & annuaire des agents"
-        subtitle={isAdmin ? "Gestion complète des personnels — toutes unités" : `Consultation limitée à votre unité : ${me.unite.nom}`}
+        subtitle={isAdmin ? `Gestion complète des personnels — ${rows.length} agent(s) en service` : `Consultation limitée à votre unité : ${me.unite.nom}`}
         breadcrumb={<>Intranet › Ressources humaines › Effectifs</>}
         actions={
-          isAdmin && (
-            <Button onClick={() => setEditing("new")}>
-              <UserPlus size={16} aria-hidden /> Ajouter un agent
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={reloadAgentsFromDB} disabled={loading}>
+              {loading ? "Synchronisation..." : "Rafraîchir"}
             </Button>
-          )
+            {isAdmin && (
+              <Button onClick={() => setEditing("new")}>
+                <UserPlus size={16} aria-hidden /> Ajouter un agent
+              </Button>
+            )}
+          </div>
         }
       />
 
@@ -170,9 +195,19 @@ function AgentsView() {
           <AgentFormModal
             agent={editing}
             onClose={() => setEditing(null)}
-            onSave={(agent) => {
+            onSave={async (agent) => {
               dispatch({ type: "UPSERT_AGENT", agent });
               setEditing(null);
+              try {
+                await fetch("/api/agents", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(agent),
+                });
+                reloadAgentsFromDB();
+              } catch (err) {
+                console.warn("Échec sauvegarde BDD agent :", err);
+              }
             }}
           />
           <RevokeModal
@@ -220,6 +255,8 @@ function AgentFormModal({ agent, onClose, onSave }: { agent: Agent | "new" | nul
       qualification: v("qualification") as QualifJudiciaire,
       role: v("role") as AuthRole,
       email: v("email"),
+      identifiant: v("identifiant") || v("matricule"),
+      motDePasse: v("motDePasse") || "Gend2026!",
     } as Agent);
   }
 
@@ -279,6 +316,12 @@ function AgentFormModal({ agent, onClose, onSave }: { agent: Agent | "new" | nul
         </Field>
         <Field label="Messagerie professionnelle" htmlFor="ag-email" error={errors.email}>
           <input id="ag-email" name="email" type="email" defaultValue={current?.email} className={inputCls} {...err("email")} />
+        </Field>
+        <Field label="Nom d'utilisateur / Identifiant intranet" hint="Par défaut : matricule" htmlFor="ag-identifiant">
+          <input id="ag-identifiant" name="identifiant" defaultValue={current?.identifiant ?? current?.matricule} className={inputCls} placeholder="ex. jdupont ou matricule" />
+        </Field>
+        <Field label="Mot de passe intranet" hint="Mot de passe d'accès pour l'agent" htmlFor="ag-password">
+          <input id="ag-password" name="motDePasse" type="text" defaultValue={current?.motDePasse ?? "Gend2026!"} className={inputCls} />
         </Field>
         <div className="flex justify-end gap-2 md:col-span-2">
           <Button variant="secondary" onClick={onClose}>Annuler</Button>

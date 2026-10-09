@@ -19,6 +19,8 @@ export type Permission =
   | "procedures:create"
   | "procedures:rapport"
   | "procedures:validate"
+  | "preplaintes:read"
+  | "preplaintes:manage"
   | "habilitations:request"
   | "habilitations:review"
   | "agents:read"
@@ -40,6 +42,8 @@ const AGENT: Partial<Record<Permission, Scope>> = {
   "procedures:read": "unit",
   "procedures:create": "unit",
   "procedures:rapport": "unit",
+  "preplaintes:read": "unit",
+  "preplaintes:manage": "unit",
   "habilitations:request": "own",
 };
 
@@ -57,6 +61,9 @@ export const RBAC_MATRIX: Record<Role, Partial<Record<Permission, Scope>>> = {
   ADMIN: {
     ...PUBLIC,
     "dashboard:view": "all",
+    "procedures:read": "all",
+    "preplaintes:read": "all",
+    "preplaintes:manage": "all",
     "habilitations:request": "own",
     "habilitations:review": "all",
     "agents:read": "all",
