@@ -599,9 +599,10 @@ export function useCurrentUser(): CurrentUser | null {
       const fallbackRole = state.role as AuthRole;
       agent = state.agents.find((a) => a.id === DEMO_ACCOUNTS[fallbackRole]);
     }
+    if (!agent) return null;
     const unite =
-      state.unites.find((u) => u.id === agent?.uniteId) ||
-      seed.UNITES.find((u) => u.id === agent?.uniteId) ||
+      state.unites.find((u) => u.id === agent.uniteId) ||
+      seed.UNITES.find((u) => u.id === agent.uniteId) ||
       seed.UNITES[0];
     const role = agent.role;
     return { role, agent, unite, subject: { role, agentId: agent.id, uniteId: agent.uniteId } };
